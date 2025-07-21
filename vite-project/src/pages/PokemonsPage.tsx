@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 
-const LIMIT = 12; // трохи більше, щоб гарно виглядало 3x4 сітка
+const LIMIT = 12; 
 
 type Pokemon = {
   name: string;
