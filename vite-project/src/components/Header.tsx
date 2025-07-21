@@ -18,6 +18,14 @@ export default function Header({ toggleTheme }: HeaderProps) {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    return () => {
+      listener.subscription.unsubscribe();
+    };
   }, []);
 
   const logout = async () => {
@@ -39,9 +47,14 @@ export default function Header({ toggleTheme }: HeaderProps) {
         </IconButton>
 
         {session && (
-          <Button onClick={logout} color="inherit">
-            Вийти
-          </Button>
+          <>
+            <Button color="inherit" component={Link} to="/pokemons">
+              Покемони
+            </Button>
+            <Button onClick={logout} color="inherit">
+              Вийти
+            </Button>
+          </>
         )}
       </Toolbar>
     </AppBar>

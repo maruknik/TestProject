@@ -6,7 +6,6 @@ export default function ResetPassword() {
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
-
   const [searchParams] = useSearchParams();
 
   const navigate = useNavigate();
