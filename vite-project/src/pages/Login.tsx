@@ -18,54 +18,42 @@ export default function Login() {
   return (
     <form
       onSubmit={handleLogin}
-      className="max-w-sm mx-auto mt-24 p-8 bg-white rounded-lg shadow-lg flex flex-col gap-6"
+      className="max-w-md mx-auto mt-24 p-8 bg-white dark:bg-gray-800 rounded-xl shadow-lg space-y-4"
     >
-      <h1 className="text-3xl font-semibold text-center text-gray-800">Логін</h1>
+      <h1 className="text-3xl font-bold text-center text-gray-800 dark:text-white">Вхід</h1>
 
       <input
         type="email"
         placeholder="Email"
-        required
         value={email}
+        required
         onChange={e => setEmail(e.target.value)}
-        className="px-4 py-3 border border-gray-300 rounded-md
-                   focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className="w-full px-4 py-3 rounded-md bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-white border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 outline-none"
       />
 
       <input
         type="password"
-        placeholder="Password"
-        required
+        placeholder="Пароль"
         value={password}
+        required
         onChange={e => setPassword(e.target.value)}
-        className="px-4 py-3 border border-gray-300 rounded-md
-                   focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className="w-full px-4 py-3 rounded-md bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-white border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 outline-none"
       />
 
-      {error && <p className="text-red-600 text-center">{error}</p>}
+      {error && <p className="text-center text-red-500">{error}</p>}
 
-      <button
-        type="submit"
-        className="bg-blue-600 text-white py-3 rounded-md font-medium hover:bg-blue-700 transition"
-      >
-        Логін
+      <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-md font-semibold">
+        Увійти
       </button>
 
-      <button
-        type="button"
-        onClick={() => navigate('/register')}
-        className="bg-gray-600 text-white py-3 rounded-md font-medium hover:bg-gray-700 transition"
-      >
-        Реєстрація
-      </button>
-
-      <button
-        type="button"
-        onClick={() => navigate('/forgot-password')}
-        className="bg-yellow-600 text-white py-3 rounded-md font-medium hover:bg-yellow-700 transition"
-      >
-        Відновити пароль
-      </button>
+      <div className="flex gap-4">
+        <button type="button" onClick={() => navigate('/register')} className="flex-1 bg-gray-600 hover:bg-gray-700 text-white py-2 rounded">
+          Реєстрація
+        </button>
+        <button type="button" onClick={() => navigate('/forgot-password')} className="flex-1 bg-yellow-600 hover:bg-yellow-700 text-white py-2 rounded">
+          Забули пароль?
+        </button>
+      </div>
     </form>
   );
 }
