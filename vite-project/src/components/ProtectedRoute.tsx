@@ -14,9 +14,17 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
     supabase.auth.getSession().then(({ data }) => {
       setIsAuth(!!data.session);
     });
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsAuth(!!session);
+    });
+
+    return () => {
+      listener?.subscription.unsubscribe();
+    };
   }, []);
 
   if (isAuth === null) return <div>Loading...</div>;
 
-  return isAuth ? children : <Navigate to="/login" />;
+  return isAuth ? <>{children}</> : <Navigate to="/login" replace />;
 }

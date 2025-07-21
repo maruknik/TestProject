@@ -26,22 +26,30 @@ export default function App() {
       <CssBaseline />
       <BrowserRouter>
         <Header toggleTheme={() => setMode(prev => prev === 'light' ? 'dark' : 'light')} />
-        <Routes>
-          <Route path="/" element={<Navigate to="/dashboard" />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/pokemons" element={<PokemonsPage />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/reset-password" element={<ResetPassword />} />
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute>
-                <Dashboard />
-              </ProtectedRoute>
-            }
-          />
-        </Routes>
+       <Routes>
+  <Route path="/" element={<Navigate to="/dashboard" />} />
+  <Route path="/login" element={<Login />} />
+  <Route path="/register" element={<Register />} />
+  <Route
+    path="/pokemons"
+    element={
+      <ProtectedRoute>
+        <PokemonsPage />
+      </ProtectedRoute>
+    }
+  />
+  <Route path="/forgot-password" element={<ForgotPassword />} />
+  <Route path="/reset-password" element={<ResetPassword />} />
+  <Route
+    path="/dashboard"
+    element={
+      <ProtectedRoute>
+        <Dashboard />
+      </ProtectedRoute>
+    }
+  />
+</Routes>
+
       </BrowserRouter>
     </ThemeProvider>
   );

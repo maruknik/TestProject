@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 
-const LIMIT = 12; 
+const LIMIT = 12;
 
 type Pokemon = {
   name: string;
@@ -53,23 +53,31 @@ const PokemonsPage = () => {
   const totalPages = Math.ceil(total / LIMIT);
 
   return (
-    <div className="max-w-4xl mx-auto py-6 px-4">
+    <div className="max-w-4xl mx-auto py-6 px-4 min-h-screen bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
       <h1 className="text-2xl font-bold mb-6">Список Покемонів</h1>
 
-      {loading && <p>Завантаження...</p>}
-      {error && <p className="text-red-500">Помилка: {error}</p>}
-      {!loading && !error && pokemons.length === 0 && <p>Список порожній.</p>}
+      {loading && <p className="text-gray-900 dark:text-gray-100">Завантаження...</p>}
+      {error && <p className="text-red-600 dark:text-red-400">Помилка: {error}</p>}
+      {!loading && !error && pokemons.length === 0 && (
+        <p className="text-gray-900 dark:text-gray-100">Список порожній.</p>
+      )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
         {pokemons.map(({ name, image }) => (
           <div
             key={name}
-            className="bg-white rounded-lg shadow p-4 flex flex-col items-center"
+            className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 flex flex-col items-center"
           >
             {image ? (
-              <img src={image} alt={name} className="w-24 h-24 object-contain mb-4" />
+              <img
+                src={image}
+                alt={name}
+                className="w-24 h-24 object-contain mb-4"
+              />
             ) : (
-              <div className="w-24 h-24 bg-gray-200 mb-4 flex items-center justify-center">Немає зображення</div>
+              <div className="w-24 h-24 bg-gray-200 dark:bg-gray-700 mb-4 flex items-center justify-center">
+                Немає зображення
+              </div>
             )}
             <p className="capitalize font-semibold text-lg">{name}</p>
           </div>
@@ -80,7 +88,7 @@ const PokemonsPage = () => {
         <button
           onClick={() => setPage((p) => Math.max(p - 1, 1))}
           disabled={page === 1}
-          className="w-10 h-10 flex items-center justify-center rounded-full bg-white border hover:bg-gray-100 disabled:opacity-50"
+          className="w-10 h-10 flex items-center justify-center rounded-full bg-white dark:bg-gray-900 border hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 text-gray-900 dark:text-gray-100"
         >
           ←
         </button>
@@ -95,7 +103,9 @@ const PokemonsPage = () => {
               key={1}
               onClick={() => setPage(1)}
               className={`w-10 h-10 rounded-full ${
-                page === 1 ? 'bg-green-100 text-green-600 font-semibold' : 'hover:bg-gray-200'
+                page === 1
+                  ? 'bg-green-100 text-green-600 font-semibold'
+                  : 'hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100'
               }`}
             >
               1
@@ -104,7 +114,7 @@ const PokemonsPage = () => {
 
           if (start > 2) {
             pageButtons.push(
-              <span key="start-ellipsis" className="px-2">
+              <span key="start-ellipsis" className="px-2 text-gray-900 dark:text-gray-100">
                 ...
               </span>
             );
@@ -116,7 +126,9 @@ const PokemonsPage = () => {
                 key={i}
                 onClick={() => setPage(i)}
                 className={`w-10 h-10 rounded-full ${
-                  page === i ? 'bg-green-100 text-green-600 font-semibold' : 'hover:bg-gray-200'
+                  page === i
+                    ? 'bg-green-100 text-green-600 font-semibold'
+                    : 'hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100'
                 }`}
               >
                 {i}
@@ -126,7 +138,7 @@ const PokemonsPage = () => {
 
           if (end < totalPages - 1) {
             pageButtons.push(
-              <span key="end-ellipsis" className="px-2">
+              <span key="end-ellipsis" className="px-2 text-gray-900 dark:text-gray-100">
                 ...
               </span>
             );
@@ -138,7 +150,9 @@ const PokemonsPage = () => {
                 key={totalPages}
                 onClick={() => setPage(totalPages)}
                 className={`w-10 h-10 rounded-full ${
-                  page === totalPages ? 'bg-green-100 text-green-600 font-semibold' : 'hover:bg-gray-200'
+                  page === totalPages
+                    ? 'bg-green-100 text-green-600 font-semibold'
+                    : 'hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100'
                 }`}
               >
                 {totalPages}
@@ -152,7 +166,7 @@ const PokemonsPage = () => {
         <button
           onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
           disabled={page === totalPages}
-          className="w-10 h-10 flex items-center justify-center rounded-full bg-white border hover:bg-gray-100 disabled:opacity-50"
+          className="w-10 h-10 flex items-center justify-center rounded-full bg-white dark:bg-gray-900 border hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 text-gray-900 dark:text-gray-100"
         >
           →
         </button>
