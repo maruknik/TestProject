@@ -51,6 +51,12 @@ export default function Header({ toggleTheme }: HeaderProps) {
             <Button color="inherit" component={Link} to="/pokemons">
               Покемони
             </Button>
+            <Button color="inherit" component={Link} to="/tasks">
+              Задачі
+            </Button>
+            <Button color="inherit" component={Link} to="/gallery">
+              Галерея
+            </Button>
             <Button onClick={logout} color="inherit">
               Вийти
             </Button>
