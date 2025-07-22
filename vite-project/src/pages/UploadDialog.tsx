@@ -1,7 +1,6 @@
 import { Dialog, DialogTitle, DialogContent, Button } from '@mui/material';
-import { useState } from 'react';
-import type { ChangeEvent } from 'react';
-import { supabase } from '../supabaseClient';
+import { useState, type ChangeEvent } from 'react';
+import { uploadFiles } from '../service/uploadService';
 
 interface UploadDialogProps {
   open: boolean;
@@ -11,47 +10,43 @@ interface UploadDialogProps {
 
 export default function UploadDialog({ open, onClose, user }: UploadDialogProps) {
   const [files, setFiles] = useState<FileList | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string>('');
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     setFiles(e.target.files);
+    setError('');
   };
 
   const handleUpload = async () => {
     if (!files) return;
-
-    for (const file of Array.from(files)) {
-      const filePath = `user-${user.id}/${file.name}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('gallery')
-        .upload(filePath, file);
-
-     if (!uploadError) {
-  const { error: insertError } = await supabase
-    .from('photos')
-    .insert({ user_id: user.id, path: filePath });
-
-  if (insertError) {
-    console.error('Insert error:', insertError.message);
-  } else {
-    console.log('Фото додано в таблицю photos:', filePath);
-  }
-} else {
-  console.error('Upload error:', uploadError.message);
-}
-
+    setLoading(true);
+    setError('');
+    try {
+      await uploadFiles(user.id, files);
+      setFiles(null);
+      onClose();
+    } catch (err: any) {
+      setError(err.message || 'Помилка завантаження');
+    } finally {
+      setLoading(false);
     }
-
-    setFiles(null);
-    onClose();
   };
 
   return (
     <Dialog open={open} onClose={onClose}>
       <DialogTitle>Завантажити фото</DialogTitle>
-      <DialogContent>
+      <DialogContent className="flex flex-col gap-4">
         <input type="file" multiple onChange={handleFileChange} />
-        <Button onClick={handleUpload} disabled={!files}>Завантажити</Button>
+        {error && <p className="text-red-600">{error}</p>}
+        <Button
+          onClick={handleUpload}
+          disabled={!files || loading}
+          variant="contained"
+          color="primary"
+        >
+          {loading ? 'Завантаження...' : 'Завантажити'}
+        </Button>
       </DialogContent>
     </Dialog>
   );

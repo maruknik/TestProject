@@ -1,15 +1,9 @@
 import { useEffect, useState } from 'react';
-import { supabase } from '../supabaseClient';
 import UploadDialog from './UploadDialog.tsx';
 import { IconButton } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
-
-interface Photo {
-  id: string;
-  path: string;
-  user_id: string;
-  created_at: string;
-}
+import { fetchUserPhotos, deletePhoto } from '../service/galleryService.ts';
+import type { Photo } from '../types/photo';
 
 interface GalleryProps {
   user: { id: string };
@@ -19,45 +13,18 @@ export default function Gallery({ user }: GalleryProps) {
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [open, setOpen] = useState(false);
 
-  const fetchPhotos = async () => {
-    const { data, error } = await supabase
-      .from('photos')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('Error fetching photos:', error.message);
-    } else {
-      setPhotos(data as Photo[]);
-    }
+  const loadPhotos = async () => {
+    const fetchedPhotos = await fetchUserPhotos(user.id);
+    setPhotos(fetchedPhotos);
   };
 
   useEffect(() => {
-    fetchPhotos();
+    loadPhotos();
   }, []);
 
   const handleDelete = async (photo: Photo) => {
-    const { error: storageError } = await supabase.storage
-      .from('gallery')
-      .remove([photo.path]);
-
-    if (storageError) {
-      console.error('Error deleting file from storage:', storageError.message);
-      return;
-    }
-
-    const { error: dbError } = await supabase
-      .from('photos')
-      .delete()
-      .eq('id', photo.id);
-
-    if (dbError) {
-      console.error('Error deleting photo record:', dbError.message);
-      return;
-    }
-
-    fetchPhotos();
+    const success = await deletePhoto(photo);
+    if (success) loadPhotos();
   };
 
   return (
@@ -105,7 +72,7 @@ export default function Gallery({ user }: GalleryProps) {
         open={open}
         onClose={() => {
           setOpen(false);
-          fetchPhotos();
+          loadPhotos();
         }}
         user={user}
       />

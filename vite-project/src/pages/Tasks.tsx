@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { CircularProgress, Typography } from '@mui/material';
-import { supabase } from '../supabaseClient';
 import AddTaskDialog from '../components/tasks/AddTaskDialog';
 import TaskColumn from '../components/tasks/TaskColumn';
 import TaskDetailsDialog from '../components/tasks/TaskDetailsDialog';
@@ -22,6 +21,13 @@ import {
   SortableContext,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
+
+import {
+  fetchTasksByUser,
+  updateTaskIndicesInDb,
+  addTask,
+  updateTaskStatusAndIndex,
+} from '../service/taskService';
 
 interface TasksProps {
   userId: string | null;
@@ -45,43 +51,27 @@ const Tasks: React.FC<TasksProps> = ({ userId }) => {
 
   const fetchTasks = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('tasks')
-      .select('*')
-      .eq('user_id', userId)
-      .order('status', { ascending: true })
-      .order('index', { ascending: true });
-
-    if (error) setError(error.message);
-    else setTasks(data || []);
+    setError('');
+    try {
+      const data = await fetchTasksByUser(userId!);
+      setTasks(data);
+    } catch (err: any) {
+      setError(err.message);
+    }
     setLoading(false);
   };
 
-  const updateTaskIndicesInDb = async (tasksToUpdate: Task[]) => {
-    for (const task of tasksToUpdate) {
-      const { error } = await supabase
-        .from('tasks')
-        .update({ index: task.index })
-        .eq('id', task.id);
-      if (error) setError(error.message);
-    }
-  };
-
   const handleAddTask = async (taskData: Omit<Task, 'id' | 'created_at' | 'index'>) => {
-    const tasksInStatus = tasks.filter(t => t.status === taskData.status);
-    const maxIndex = tasksInStatus.length > 0 ? Math.max(...tasksInStatus.map(t => t.index)) : -1;
-    const newTaskWithIndex = { ...taskData, index: maxIndex + 1 };
+    try {
+      const tasksInStatus = tasks.filter(t => t.status === taskData.status);
+      const maxIndex = tasksInStatus.length > 0 ? Math.max(...tasksInStatus.map(t => t.index)) : -1;
+      const newTaskWithIndex = { ...taskData, index: maxIndex + 1, user_id: userId! };
 
-    const { data, error } = await supabase
-      .from('tasks')
-      .insert([newTaskWithIndex])
-      .select()
-      .single();
-
-    if (error) {
-      setError(error.message);
-    } else if (data) {
-      setTasks(prev => [...prev, data]);
+      const newTask = await addTask(newTaskWithIndex);
+      setTasks(prev => [...prev, newTask]);
+      setAddDialogOpen(false);
+    } catch (err: any) {
+      setError(err.message);
     }
   };
 
@@ -90,11 +80,11 @@ const Tasks: React.FC<TasksProps> = ({ userId }) => {
   };
 
   const handleTaskUpdate = (updatedTask: Task) => {
-    setTasks((prev) => prev.map((t) => (t.id === updatedTask.id ? updatedTask : t)));
+    setTasks(prev => prev.map(t => (t.id === updatedTask.id ? updatedTask : t)));
   };
 
   const handleDragStart = (event: DragStartEvent) => {
-    const task = tasks.find((t) => t.id === event.active.id);
+    const task = tasks.find(t => t.id === event.active.id);
     if (task) setActiveTask(task);
   };
 
@@ -110,77 +100,73 @@ const Tasks: React.FC<TasksProps> = ({ userId }) => {
     const overTask = tasks.find(t => t.id === over.id);
     const overStatus = (overTask ? overTask.status : over.id) as Task['status'];
 
-    if (draggedTask.status !== overStatus) {
-      const newStatusTasks = tasks
-        .filter(t => t.status === overStatus)
-        .sort((a, b) => a.index - b.index);
+    try {
+      if (draggedTask.status !== overStatus) {
+        // Переходимо в інший статус
+        const newStatusTasks = tasks
+          .filter(t => t.status === overStatus)
+          .sort((a, b) => a.index - b.index);
 
-      const newIndex = newStatusTasks.length;
+        const newIndex = newStatusTasks.length;
 
-      const updatedDraggedTask = { ...draggedTask, status: overStatus, index: newIndex };
+        const updatedDraggedTask = { ...draggedTask, status: overStatus, index: newIndex };
 
-      const oldStatusTasks = tasks
-        .filter(t => t.status === draggedTask.status && t.id !== draggedTask.id)
-        .sort((a, b) => a.index - b.index)
-        .map((t, i) => ({ ...t, index: i }));
+        const oldStatusTasks = tasks
+          .filter(t => t.status === draggedTask.status && t.id !== draggedTask.id)
+          .sort((a, b) => a.index - b.index)
+          .map((t, i) => ({ ...t, index: i }));
 
-      setTasks(prev => {
-        const otherTasks = prev.filter(t => t.id !== draggedTask.id);
+        setTasks(prev => {
+          const otherTasks = prev.filter(t => t.id !== draggedTask.id);
 
-        return [
-          ...otherTasks.filter(t => t.status !== draggedTask.status && t.status !== overStatus),
-          ...oldStatusTasks,
-          updatedDraggedTask,
-          ...newStatusTasks,
-        ].sort((a, b) => {
-          if (a.status === b.status) return a.index - b.index;
-          return statuses.indexOf(a.status) - statuses.indexOf(b.status);
+          return [
+            ...otherTasks.filter(t => t.status !== draggedTask.status && t.status !== overStatus),
+            ...oldStatusTasks,
+            updatedDraggedTask,
+            ...newStatusTasks,
+          ].sort((a, b) => {
+            if (a.status === b.status) return a.index - b.index;
+            return statuses.indexOf(a.status) - statuses.indexOf(b.status);
+          });
         });
-      });
 
-      const { error: updateError } = await supabase
-        .from('tasks')
-        .update({ status: updatedDraggedTask.status, index: updatedDraggedTask.index })
-        .eq('id', updatedDraggedTask.id);
+        await updateTaskStatusAndIndex(updatedDraggedTask.id, updatedDraggedTask.status, updatedDraggedTask.index);
+        await updateTaskIndicesInDb(oldStatusTasks);
 
-      if (updateError) {
-        setError(updateError.message);
-        fetchTasks();
         return;
       }
 
-      await updateTaskIndicesInDb(oldStatusTasks);
+      if (draggedTask.status === overStatus) {
+        const statusTasks = tasks
+          .filter(t => t.status === draggedTask.status && t.id !== draggedTask.id)
+          .sort((a, b) => a.index - b.index);
 
-      return;
-    }
+        const overTaskIndex = statusTasks.findIndex(t => t.id === over.id);
+        if (overTaskIndex === -1) return;
 
-    if (draggedTask.status === overStatus) {
-      const statusTasks = tasks
-        .filter(t => t.status === draggedTask.status && t.id !== draggedTask.id)
-        .sort((a, b) => a.index - b.index);
+        const newStatusTasks = [
+          ...statusTasks.slice(0, overTaskIndex),
+          draggedTask,
+          ...statusTasks.slice(overTaskIndex),
+        ].map((t, i) => ({ ...t, index: i }));
 
-      const overTaskIndex = statusTasks.findIndex(t => t.id === over.id);
-      if (overTaskIndex === -1) return;
+        setTasks(prev =>
+          prev
+            .filter(t => t.status !== draggedTask.status)
+            .concat(newStatusTasks)
+            .sort((a, b) => {
+              if (a.status === b.status) return a.index - b.index;
+              return statuses.indexOf(a.status) - statuses.indexOf(b.status);
+            }),
+        );
 
-      const newStatusTasks = [
-        ...statusTasks.slice(0, overTaskIndex),
-        draggedTask,
-        ...statusTasks.slice(overTaskIndex),
-      ].map((t, i) => ({ ...t, index: i }));
+        await updateTaskIndicesInDb(newStatusTasks);
 
-      setTasks(prev =>
-        prev
-          .filter(t => t.status !== draggedTask.status)
-          .concat(newStatusTasks)
-          .sort((a, b) => {
-            if (a.status === b.status) return a.index - b.index;
-            return statuses.indexOf(a.status) - statuses.indexOf(b.status);
-          }),
-      );
-
-      await updateTaskIndicesInDb(newStatusTasks);
-
-      return;
+        return;
+      }
+    } catch (err: any) {
+      setError(err.message);
+      await fetchTasks();
     }
   };
 

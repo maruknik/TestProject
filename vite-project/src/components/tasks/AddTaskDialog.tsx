@@ -49,7 +49,6 @@ const AddTaskDialog: React.FC<AddTaskDialogProps> = ({
       }
 
       try {
-        // Просто передаємо дані нагору, без запиту в базу
         onTaskAdded({
           user_id: userId,
           title: values.title,
