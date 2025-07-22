@@ -49,15 +49,40 @@ const Tasks: React.FC<TasksProps> = ({ userId }) => {
       .from('tasks')
       .select('*')
       .eq('user_id', userId)
-      .order('created_at', { ascending: true });
+      .order('status', { ascending: true })
+      .order('index', { ascending: true });
 
     if (error) setError(error.message);
     else setTasks(data || []);
     setLoading(false);
   };
 
-  const handleTaskAdd = (newTask: Task) => {
-    setTasks((prev) => [...prev, newTask]);
+  const updateTaskIndicesInDb = async (tasksToUpdate: Task[]) => {
+    for (const task of tasksToUpdate) {
+      const { error } = await supabase
+        .from('tasks')
+        .update({ index: task.index })
+        .eq('id', task.id);
+      if (error) setError(error.message);
+    }
+  };
+
+  const handleAddTask = async (taskData: Omit<Task, 'id' | 'created_at' | 'index'>) => {
+    const tasksInStatus = tasks.filter(t => t.status === taskData.status);
+    const maxIndex = tasksInStatus.length > 0 ? Math.max(...tasksInStatus.map(t => t.index)) : -1;
+    const newTaskWithIndex = { ...taskData, index: maxIndex + 1 };
+
+    const { data, error } = await supabase
+      .from('tasks')
+      .insert([newTaskWithIndex])
+      .select()
+      .single();
+
+    if (error) {
+      setError(error.message);
+    } else if (data) {
+      setTasks(prev => [...prev, data]);
+    }
   };
 
   const handleTaskClick = (task: Task) => {
@@ -79,30 +104,92 @@ const Tasks: React.FC<TasksProps> = ({ userId }) => {
 
     if (!over || active.id === over.id) return;
 
-    const activeTask = tasks.find((t) => t.id === active.id);
-    if (!activeTask) return;
+    const draggedTask = tasks.find(t => t.id === active.id);
+    if (!draggedTask) return;
 
-    if (statuses.includes(over.id as Task['status']) && activeTask.status !== over.id) {
-      const updatedTask = { ...activeTask, status: over.id as Task['status'] };
+    const overTask = tasks.find(t => t.id === over.id);
+    const overStatus = (overTask ? overTask.status : over.id) as Task['status'];
 
-      setTasks((prev) =>
-        prev.map((t) => (t.id === updatedTask.id ? updatedTask : t))
+    if (draggedTask.status !== overStatus) {
+      const newStatusTasks = tasks
+        .filter(t => t.status === overStatus)
+        .sort((a, b) => a.index - b.index);
+
+      const newIndex = newStatusTasks.length;
+
+      const updatedDraggedTask = { ...draggedTask, status: overStatus, index: newIndex };
+
+      const oldStatusTasks = tasks
+        .filter(t => t.status === draggedTask.status && t.id !== draggedTask.id)
+        .sort((a, b) => a.index - b.index)
+        .map((t, i) => ({ ...t, index: i }));
+
+      setTasks(prev => {
+        const otherTasks = prev.filter(t => t.id !== draggedTask.id);
+
+        return [
+          ...otherTasks.filter(t => t.status !== draggedTask.status && t.status !== overStatus),
+          ...oldStatusTasks,
+          updatedDraggedTask,
+          ...newStatusTasks,
+        ].sort((a, b) => {
+          if (a.status === b.status) return a.index - b.index;
+          return statuses.indexOf(a.status) - statuses.indexOf(b.status);
+        });
+      });
+
+      const { error: updateError } = await supabase
+        .from('tasks')
+        .update({ status: updatedDraggedTask.status, index: updatedDraggedTask.index })
+        .eq('id', updatedDraggedTask.id);
+
+      if (updateError) {
+        setError(updateError.message);
+        fetchTasks();
+        return;
+      }
+
+      await updateTaskIndicesInDb(oldStatusTasks);
+
+      return;
+    }
+
+    if (draggedTask.status === overStatus) {
+      const statusTasks = tasks
+        .filter(t => t.status === draggedTask.status && t.id !== draggedTask.id)
+        .sort((a, b) => a.index - b.index);
+
+      const overTaskIndex = statusTasks.findIndex(t => t.id === over.id);
+      if (overTaskIndex === -1) return;
+
+      const newStatusTasks = [
+        ...statusTasks.slice(0, overTaskIndex),
+        draggedTask,
+        ...statusTasks.slice(overTaskIndex),
+      ].map((t, i) => ({ ...t, index: i }));
+
+      setTasks(prev =>
+        prev
+          .filter(t => t.status !== draggedTask.status)
+          .concat(newStatusTasks)
+          .sort((a, b) => {
+            if (a.status === b.status) return a.index - b.index;
+            return statuses.indexOf(a.status) - statuses.indexOf(b.status);
+          }),
       );
 
-      const { error } = await supabase
-        .from('tasks')
-        .update({ status: updatedTask.status })
-        .eq('id', updatedTask.id);
+      await updateTaskIndicesInDb(newStatusTasks);
 
-      if (error) {
-        setError(error.message);
-        fetchTasks();
-      }
+      return;
     }
   };
 
   if (!userId)
-    return <Typography className="text-center mt-10">Будь ласка, увійдіть у систему.</Typography>;
+    return (
+      <Typography className="text-center mt-10 text-gray-700 text-lg font-medium select-none">
+        Будь ласка, увійдіть у систему.
+      </Typography>
+    );
 
   if (loading)
     return (
@@ -113,7 +200,9 @@ const Tasks: React.FC<TasksProps> = ({ userId }) => {
 
   const tasksByStatus = statuses.reduce<Record<Task['status'], Task[]>>(
     (acc, status) => {
-      acc[status] = tasks.filter((task) => task.status === status);
+      acc[status] = tasks
+        .filter(task => task.status === status)
+        .sort((a, b) => a.index - b.index);
       return acc;
     },
     { todo: [], in_progress: [], done: [] }
@@ -124,14 +213,25 @@ const Tasks: React.FC<TasksProps> = ({ userId }) => {
       <div className="flex justify-start px-4 mt-6 mb-6">
         <button
           type="button"
-          className="px-6 py-3 bg-green-600 text-white rounded-lg shadow-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-400 transition-colors font-semibold select-none"
+          className="
+            px-6 py-3
+            bg-gradient-to-r from-green-400 via-green-500 to-green-600
+            text-white rounded-xl
+            shadow-lg hover:shadow-xl
+            hover:from-green-500 hover:via-green-600 hover:to-green-700
+            active:scale-95 transition-transform duration-150
+            focus:outline-none focus:ring-4 focus:ring-green-300
+            font-semibold select-none
+          "
           onClick={() => setAddDialogOpen(true)}
         >
           Додати завдання
         </button>
       </div>
 
-      {error && <p className="text-red-600 mb-4 font-semibold px-4">{error}</p>}
+      {error && (
+        <p className="text-red-600 mb-4 font-semibold px-4 select-none">{error}</p>
+      )}
 
       <DndContext
         sensors={sensors}
@@ -139,28 +239,50 @@ const Tasks: React.FC<TasksProps> = ({ userId }) => {
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        <div className="flex flex-wrap gap-6 justify-between px-4">
-          {statuses.map((status) => (
+        <div className="flex flex-wrap gap-4 justify-between px-4">
+          {statuses.map(status => (
             <SortableContext
               key={status}
-              items={tasksByStatus[status].map((task) => task.id)}
+              items={tasksByStatus[status].map(task => task.id)}
               strategy={verticalListSortingStrategy}
             >
-              <div className="flex-1 min-w-[300px] max-w-sm border border-gray-300 rounded-lg p-4 shadow-md bg-white">
+              <section
+                className="
+                  flex-1 min-w-[320px] max-w-md
+                  rounded-3xl p-6
+                  bg-white
+                  border border-gray-200
+                  shadow-lg
+                  hover:shadow-2xl
+                  transition-shadow duration-300
+                  flex flex-col
+                "
+                id={status}
+              >
+                <Typography
+                  variant="h5"
+                  component="h2"
+                  className="mb-6 text-gray-800 font-bold text-center select-none tracking-wide"
+                >
+                  {status === 'todo' && 'Заплановані'}
+                  {status === 'in_progress' && 'В процесі'}
+                  {status === 'done' && 'Завершені'}
+                </Typography>
+
                 <TaskColumn
                   status={status}
                   tasks={tasksByStatus[status]}
                   onTaskUpdate={handleTaskUpdate}
                   onTaskClick={handleTaskClick}
                 />
-              </div>
+              </section>
             </SortableContext>
           ))}
         </div>
 
         <DragOverlay>
           {activeTask ? (
-            <div className="pointer-events-none">
+            <div className="pointer-events-none scale-105 shadow-2xl rounded-2xl">
               <TaskCard task={activeTask} onClick={() => {}} />
             </div>
           ) : null}
@@ -170,7 +292,7 @@ const Tasks: React.FC<TasksProps> = ({ userId }) => {
       <AddTaskDialog
         open={addDialogOpen}
         onClose={() => setAddDialogOpen(false)}
-        onTaskAdded={handleTaskAdd}
+        onTaskAdded={handleAddTask}
         userId={userId!}
       />
 

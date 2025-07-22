@@ -5,6 +5,7 @@ export interface Task {
   description?: string;
   status: 'todo' | 'in_progress' | 'done';
   created_at: string;
+  index: number;
 }
 
 export interface Database {

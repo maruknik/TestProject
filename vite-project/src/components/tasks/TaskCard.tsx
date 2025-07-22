@@ -19,11 +19,21 @@ const TaskCard: React.FC<TaskCardProps> = ({
   return (
     <Card
       variant="outlined"
-      sx={{ mb: 1, cursor: 'pointer' }}
+      sx={{
+        mb: 0,
+        cursor: 'pointer',
+        borderRadius: 2,
+        boxShadow: '0 1px 6px rgba(0,0,0,0.1)',
+        transition: 'box-shadow 0.25s ease, transform 0.15s ease',
+        '&:hover': {
+          boxShadow: '0 6px 20px rgba(0,0,0,0.15)',
+          transform: 'translateY(-4px)',
+        },
+      }}
       onClick={() => onClick(task)}
     >
-      <CardContent className="flex items-start justify-between gap-2">
-        <div className="flex-1">
+      <CardContent className="flex items-start justify-between gap-3">
+        <div className="flex-1 min-w-0">
           <Typography variant="h6" component="div" noWrap>
             {task.title}
           </Typography>
@@ -34,7 +44,6 @@ const TaskCard: React.FC<TaskCardProps> = ({
           )}
         </div>
 
-     
         <div
           {...dragAttributes}
           {...dragListeners}
@@ -44,7 +53,7 @@ const TaskCard: React.FC<TaskCardProps> = ({
           style={{ cursor: 'grab', display: 'inline-flex' }}
           aria-label="Перетягнути"
         >
-          <GripVertical size={18} />
+          <GripVertical size={20} />
         </div>
       </CardContent>
     </Card>

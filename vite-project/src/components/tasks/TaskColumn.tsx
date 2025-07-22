@@ -27,14 +27,14 @@ const TaskColumn: React.FC<TaskColumnProps> = ({
   return (
     <div
       ref={setNodeRef}
-      className={`flex flex-col bg-white rounded-lg p-4 min-h-[480px] shadow-md border transition-colors duration-300 ${
-        isOver ? 'border-blue-500 bg-blue-50' : 'border-gray-300'
+      className={`flex flex-col bg-white rounded-xl p-4 min-h-[480px] shadow-sm border transition-colors duration-300 ${
+        isOver ? 'border-green-500 bg-green-50' : 'border-gray-300'
       }`}
     >
-      <h2 className="text-xl font-semibold mb-4">{statusLabels[status]}</h2>
-      <div className="flex-grow overflow-y-auto space-y-3">
+      <h2 className="text-lg font-semibold mb-4 select-none">{statusLabels[status]}</h2>
+      <div className="flex-grow overflow-y-auto space-y-1">
         {tasks.length === 0 ? (
-          <p className="text-gray-400 italic">Немає задач</p>
+          <p className="text-gray-400 italic select-none">Немає задач</p>
         ) : (
           tasks.map((task) => (
             <SortableTaskCard

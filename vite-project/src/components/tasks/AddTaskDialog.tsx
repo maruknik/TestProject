@@ -8,7 +8,6 @@ import {
   Typography,
 } from '@mui/material';
 import { useFormik } from 'formik';
-import { supabase } from '../../supabaseClient';
 import TaskFormFields from './TaskFormFields';
 import type { Task } from '../../types/task';
 import { taskValidationSchema } from './taskValidationSchema';
@@ -23,7 +22,7 @@ interface TaskFormValues {
 interface AddTaskDialogProps {
   open: boolean;
   onClose: () => void;
-  onTaskAdded: (task: Task) => void;
+  onTaskAdded: (taskData: Omit<Task, 'id' | 'created_at' | 'index'>) => void;
   userId: string;
 }
 
@@ -33,7 +32,12 @@ const initialValues: TaskFormValues = {
   status: 'todo',
 };
 
-const AddTaskDialog: React.FC<AddTaskDialogProps> = ({ open, onClose, onTaskAdded, userId }) => {
+const AddTaskDialog: React.FC<AddTaskDialogProps> = ({
+  open,
+  onClose,
+  onTaskAdded,
+  userId,
+}) => {
   const formik = useFormik<TaskFormValues>({
     initialValues,
     validationSchema: taskValidationSchema,
@@ -45,26 +49,15 @@ const AddTaskDialog: React.FC<AddTaskDialogProps> = ({ open, onClose, onTaskAdde
       }
 
       try {
-        const { data, error } = await supabase
-          .from('tasks')
-          .insert([
-            {
-              user_id: userId,
-              title: values.title,
-              description: values.description,
-              status: values.status,
-            },
-          ])
-          .select()
-          .single();
-
-        if (error) throw error;
-
-        if (data) {
-          onTaskAdded(data);
-          resetForm();
-          onClose();
-        }
+        // Просто передаємо дані нагору, без запиту в базу
+        onTaskAdded({
+          user_id: userId,
+          title: values.title,
+          description: values.description,
+          status: values.status,
+        });
+        resetForm();
+        onClose();
       } catch (error: any) {
         setErrors({ submit: error.message || 'Сталася помилка при додаванні задачі' });
       } finally {
